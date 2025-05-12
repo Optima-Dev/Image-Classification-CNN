@@ -1,3 +1,4 @@
+# Import required libraries
 import numpy as np
 import math
 import os
@@ -9,14 +10,20 @@ import pickle
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 import tensorflow as tf
 import argparse
-
 from matplotlib import pyplot as plt
 import copy
 
 def plotter(history_file):
+    """
+    Plot and save training history graphs for accuracy and loss.
+    Args:
+        history_file (str): Path to the pickle file containing training history
+    """
+    # Load training history from file
     with open(history_file, 'rb') as file:
         history = pickle.load(file)
     
+    # Plot accuracy graph
     plt.figure(1)
     plt.plot(history['accuracy'])
     plt.plot(history['val_accuracy'])
@@ -27,6 +34,7 @@ def plotter(history_file):
     plt.savefig('18_000_15epoch_accuracy.png')
     plt.close()
 
+    # Plot loss graph
     plt.figure(2)
     plt.plot(history['loss'])
     plt.plot(history['val_loss'])
@@ -37,72 +45,6 @@ def plotter(history_file):
     plt.savefig('18_000_15epoch_loss.png')
     plt.close()
 
-
-def video_write(model):
-    fourcc = cv2.VideoWriter_fourcc(*'DIVX')
-    out = cv2.VideoWriter("./prediction.mp4", fourcc, 1.0, (400,400))
-    val_map = {1: 'Dog', 0: 'Cat'}
-
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    location = (20,20)
-    fontScale = 0.5
-    fontColor = (255,255,255)
-    lineType  = 2
-
-    DIR = CONST.TEST_DIR
-    image_paths = os.listdir(DIR)
-    image_paths = image_paths[:200]
-    count = 0
-    
-    for img_path in image_paths:
-        try:
-            image, image_std = process_image(DIR, img_path)
-            if image is None or image_std is None:
-                continue
-                
-            image_std = image_std.reshape(-1, CONST.IMG_SIZE, CONST.IMG_SIZE, 3)
-            pred = model.predict(image_std, verbose=0)
-            arg_max = np.argmax(pred, axis=1)
-            max_val = np.max(pred, axis=1)
-            s = val_map[arg_max[0]] + ' - ' + str(round(max_val[0]*100, 2)) + '%'
-            cv2.putText(image, s, 
-                location, 
-                font, 
-                fontScale,
-                fontColor,
-                lineType)
-            
-            frame = cv2.resize(image, (400, 400))
-            out.write(frame)
-            
-            count += 1
-            if count % 10 == 0:
-                print(f"Processed {count} test images")
-        except Exception as e:
-            print(f"Error processing test image {img_path}: {str(e)}")
-            continue
-            
-    out.release()
-    print("Video processing complete")
-
-
-def process_image(directory, img_path):
-    try:
-        path = os.path.join(directory, img_path)
-        image = cv2.imread(path)
-        if image is None:
-            print(f"Could not load image: {img_path}")
-            return None, None
-            
-        image_copy = copy.deepcopy(image)
-        image = cv2.resize(image, (CONST.IMG_SIZE, CONST.IMG_SIZE))
-        image_std = image.astype('float32') / 255.0
-        return image_copy, image_std
-    except Exception as e:
-        print(f"Error in process_image for {img_path}: {str(e)}")
-        return None, None
-
-
 def classify_single_image(model, image_path):
     """
     Classify a single image and return the prediction.
@@ -110,7 +52,10 @@ def classify_single_image(model, image_path):
         model: The trained model
         image_path: Path to the image to classify
     Returns:
-        tuple: (prediction, confidence)
+        tuple: (prediction, confidence, output_path) where:
+            - prediction: Class name ('Cat' or 'Dog')
+            - confidence: Prediction confidence (0-1)
+            - output_path: Path to the saved annotated image
     """
     try:
         # Read and preprocess the image
@@ -123,7 +68,7 @@ def classify_single_image(model, image_path):
         
         # Preprocess the image
         image = cv2.resize(image, (CONST.IMG_SIZE, CONST.IMG_SIZE))
-        image = image.astype('float32') / 255.0
+        image = image.astype('float32') / 255.0  # Normalize to [0,1] range
         image = np.expand_dims(image, axis=0)  # Add batch dimension
         
         # Make prediction
@@ -154,9 +99,8 @@ def classify_single_image(model, image_path):
     except Exception as e:
         return None, f"Error during classification: {str(e)}"
 
-
 if __name__ == "__main__":
-    # Create argument parser
+    # Create argument parser for command-line interface
     parser = argparse.ArgumentParser(description='Cat vs Dog Classifier')
     parser.add_argument('--mode', choices=['train', 'predict'], required=True, help='Mode: train or predict')
     parser.add_argument('--image', help='Path to image for prediction (required in predict mode)')
@@ -186,9 +130,9 @@ if __name__ == "__main__":
         test_labels = labels[train_size:]
         print('Test data shape:', test_images.shape)
 
-        # Create callbacks
-        tensorboard = TensorBoard(log_dir='logs')
-        checkpoint = ModelCheckpoint(
+        # Create callbacks for training
+        tensorboard = TensorBoard(log_dir='logs')  # For monitoring training progress
+        checkpoint = ModelCheckpoint(  # Save best model during training
             'best_model.h5',
             monitor='val_accuracy',
             save_best_only=True,
@@ -201,6 +145,7 @@ if __name__ == "__main__":
         print('Training started...')
         
         try:
+            # Train the model
             history = model.fit(
                 train_images, 
                 train_labels,
@@ -215,13 +160,12 @@ if __name__ == "__main__":
             # Save final model
             model.save('final_model.h5')
             
-            # Save and plot history
+            # Save and plot training history
             history_file = 'training_history.pickle'
             with open(history_file, 'wb') as file:
                 pickle.dump(history.history, file)
             
             plotter(history_file)
-            video_write(model)
             
         except Exception as e:
             print(f"Error during training: {str(e)}")
