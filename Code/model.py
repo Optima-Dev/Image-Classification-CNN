@@ -2,8 +2,6 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Dropout, Flatten, BatchNormalization
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
-import time
-import os
 import constants as CONST
 
 def get_model():

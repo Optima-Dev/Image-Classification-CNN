@@ -1,7 +1,5 @@
 # Import required libraries
 import numpy as np
-import math
-import os
 import cv2
 from data_prep import prep_and_load_data
 from model import get_model
@@ -10,40 +8,7 @@ import pickle
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 import tensorflow as tf
 import argparse
-from matplotlib import pyplot as plt
 import copy
-
-def plotter(history_file):
-    """
-    Plot and save training history graphs for accuracy and loss.
-    Args:
-        history_file (str): Path to the pickle file containing training history
-    """
-    # Load training history from file
-    with open(history_file, 'rb') as file:
-        history = pickle.load(file)
-    
-    # Plot accuracy graph
-    plt.figure(1)
-    plt.plot(history['accuracy'])
-    plt.plot(history['val_accuracy'])
-    plt.title('model accuracy')
-    plt.ylabel('accuracy')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.savefig('18_000_15epoch_accuracy.png')
-    plt.close()
-
-    # Plot loss graph
-    plt.figure(2)
-    plt.plot(history['loss'])
-    plt.plot(history['val_loss'])
-    plt.title('model loss')
-    plt.ylabel('loss')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'val'], loc='upper left')
-    plt.savefig('18_000_15epoch_loss.png')
-    plt.close()
 
 def classify_single_image(model, image_path):
     """
@@ -104,6 +69,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Cat vs Dog Classifier')
     parser.add_argument('--mode', choices=['train', 'predict'], required=True, help='Mode: train or predict')
     parser.add_argument('--image', help='Path to image for prediction (required in predict mode)')
+    parser.add_argument('--epochs', type=int, default=15, help='Number of training epochs (default: 15)')
     args = parser.parse_args()
 
     if args.mode == 'train':
@@ -150,7 +116,7 @@ if __name__ == "__main__":
                 train_images, 
                 train_labels,
                 batch_size=CONST.BATCH_SIZE,
-                epochs=15,
+                epochs=args.epochs,
                 verbose=1,
                 validation_data=(test_images, test_labels),
                 callbacks=[tensorboard, checkpoint]
@@ -160,12 +126,10 @@ if __name__ == "__main__":
             # Save final model
             model.save('final_model.h5')
             
-            # Save and plot training history
+            # Save training history
             history_file = 'training_history.pickle'
             with open(history_file, 'wb') as file:
                 pickle.dump(history.history, file)
-            
-            plotter(history_file)
             
         except Exception as e:
             print(f"Error during training: {str(e)}")

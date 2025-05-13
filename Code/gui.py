@@ -2,14 +2,10 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 import threading
-import os
 from main import get_model, prep_and_load_data, classify_single_image
 import constants as CONST
-from tensorflow.keras.callbacks import TensorBoard
 import tensorflow as tf
-from matplotlib import pyplot as plt
 from PIL import Image, ImageTk
-import numpy as np
 import time
 
 class CatDogClassifierGUI:
